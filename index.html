@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Resume Screener</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        h1 { color: #1e40af; text-align: center; margin-bottom: 10px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; }
+        .upload-area { border: 3px dashed #3b82f6; padding: 40px; text-align: center; margin: 20px 0; border-radius: 15px; background: #f8fafc; }
+        input[type="file"] { margin: 10px 0; padding: 10px; }
+        button { background: #3b82f6; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #2563eb; }
+        .result { margin-top: 20px; padding: 20px; border-radius: 10px; display: none; }
+        .success { background: #ecfdf5; border: 2px solid #10b981; }
+        .error { background: #fef2f2; border: 2px solid #ef4444; }
+        .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .analysis-card { background: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; }
+        .skill-tag { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 8px; margin: 2px; border-radius: 4px; font-size: 12px; }
+        .loading { text-align: center; padding: 20px; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Resume Screener</h1>
+        <p class="subtitle">Upload your resume and get AI-powered analysis with skills extraction!</p>
+        
+        <div class="upload-area">
+            <h3>📄 Upload Resume</h3>
+            <p>Supports PDF and TXT files</p>
+            <input type="file" id="resumeFile" accept=".pdf,.txt">
+            <br><br>
+            <button onclick="uploadResume()">🚀 Analyze with AI</button>
+        </div>
+        
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        async function uploadResume() {
+            const fileInput = document.getElementById('resumeFile');
+            const resultDiv = document.getElementById('result');
+            
+            if (!fileInput.files[0]) {
+                showResult('Please select a file!', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                // Show loading
+                resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>🧠 AI is analyzing your resume...</p></div>';
+                resultDiv.className = 'result success';
+                resultDiv.style.display = 'block';
+                
+                const response = await fetch('http://localhost:5000/api/upload-resume', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayAnalysis(data);
+                } else {
+                    showResult(`❌ Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`❌ Connection Error: Make sure backend is running on port 5000`, 'error');
+            }
+        }
+        
+        function displayAnalysis(data) {
+            const analysis = data.data.analysis;
+            
+            const html = `
+                <h3>✅ Analysis Complete!</h3>
+                <p><strong>File:</strong> ${data.data.filename}</p>
+                
+                <div class="analysis-grid">
+                    <div class="analysis-card">
+                        <h4>👤 Personal Info</h4>
+                        <p><strong>Name:</strong> ${analysis.name}</p>
+                        <p><strong>Email:</strong> ${analysis.email}</p>
+                        <p><strong>Phone:</strong> ${analysis.phone}</p>
+                    </div>
+                    
+                    <div class="analysis-card">
+                        <h4>💼 Experience</h4>
+                        <p><strong>Experience:</strong> ${analysis.experience_years}</p>
+                        <p><strong>Education:</strong> ${analysis.education[0] || 'Not specified'}</p>
+                    </div>
+                </div>
+                
+                <div class="analysis-card" style="margin-top: 20px;">
+                    <h4>🛠️ Skills Detected</h4>
+                    <div>
+                        ${analysis.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                        ${analysis.skills.length === 0 ? '<p>No technical skills detected</p>' : ''}
+                    </div>
+                </div>
+                
+                <div class="analysis-card" style="margin-top: 20px;">
+                    <h4>📊 Analysis Summary</h4>
+                    <p>Total words: ${analysis.summary.total_words}</p>
+                    <p>Analyzed on: ${analysis.summary.analysis_date}</p>
+                </div>
+            `;
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = html;
+            resultDiv.className = 'result success';
+            resultDiv.style.display = 'block';
+        }
+        
+        function showResult(message, type) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = message;
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
